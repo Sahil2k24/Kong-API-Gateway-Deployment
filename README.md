@@ -1,6 +1,7 @@
 Here’s a detailed README file for your GitHub repository:
 
 ---
+![image](https://github.com/user-attachments/assets/e9a6fc90-c2b2-4bcd-9767-c757c893a4a9)
 
 # Kong Gateway Installation, Configuration, and Setup
 
