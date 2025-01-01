@@ -1,313 +1,260 @@
-Kong Gateway is a lightweight, fast, and flexible cloud-native API gateway. An API gateway is a reverse proxy that lets you manage, configure, and route requests to your APIs.
+Here’s a detailed README file for your GitHub repository:
 
-Kong Gateway Installation, Configuration, and Setup Documentation
+---
 
-Step 1: Install PostgreSQL
+# Kong Gateway Installation, Configuration, and Setup
 
-Update the package list:
+Kong Gateway is a lightweight, fast, and flexible cloud-native API gateway. This documentation provides step-by-step instructions for installing, configuring, and setting up Kong Gateway with PostgreSQL as the database.
 
-sudo apt update
+## Prerequisites
 
-Install PostgreSQL:
+- Ubuntu OS
+- Admin access to the server
+- Basic knowledge of PostgreSQL and Kong Gateway
 
-sudo apt install postgresql
+---
 
-Check PostgreSQL service status:
+## Table of Contents
 
-sudo systemctl status postgresql
+1. [Install PostgreSQL](#step-1-install-postgresql)
+2. [Create PostgreSQL User and Database](#step-2-create-postgresql-user-and-database)
+3. [Install Kong Gateway](#step-3-install-kong-gateway)
+4. [Configure PostgreSQL Authentication](#step-4-configure-postgresql-authentication)
+5. [Configure Kong](#step-5-configure-kong)
+6. [Run Database Migrations](#step-6-run-database-migrations)
+7. [Start Kong Gateway](#step-7-start-kong-gateway)
+8. [Kong Services Setup](#kong-services-setup)
+   - Create Gateway Service
+   - Create Route
+   - Set Up Rate Limiting
+   - Set Up API Key Authentication
+   - Create Consumer and Set Up Credentials
+   - Testing
+   - Logging: File Log Plugin
+   - API Versioning
 
-Step 2: Create PostgreSQL User and Database
+---
 
-Log into PostgreSQL shell:
+## Step 1: Install PostgreSQL
 
-sudo -u postgres psql
+1. **Update the package list:**
+   ```bash
+   sudo apt update
+   ```
 
-Create a user:
+2. **Install PostgreSQL:**
+   ```bash
+   sudo apt install postgresql
+   ```
 
-CREATE USER kong WITH PASSWORD 'super_secret';
+3. **Check PostgreSQL service status:**
+   ```bash
+   sudo systemctl status postgresql
+   ```
 
-Create a database:
+---
 
-CREATE DATABASE kong OWNER kong;
+## Step 2: Create PostgreSQL User and Database
 
-Exit PostgreSQL:
+1. **Log into PostgreSQL shell:**
+   ```bash
+   sudo -u postgres psql
+   ```
 
-\q
+2. **Create a user:**
+   ```sql
+   CREATE USER kong WITH PASSWORD 'super_secret';
+   ```
 
-Step 3: Install Kong Gateway
+3. **Create a database:**
+   ```sql
+   CREATE DATABASE kong OWNER kong;
+   ```
 
-Download the Kong package:
+4. **Exit PostgreSQL:**
+   ```sql
+   \q
+   ```
 
-curl -Lo kong-enterprise-edition-3.8.0.0.deb "https://packages.konghq.com/public/gateway-38/deb/ubuntu/pool/jammy/main/k/ko/kong-enterprise-edition_3.8.0.0/kong-enterprise-edition_3.8.0.0_$(dpkg --print-architecture).deb"
+---
 
-Install Kong:
+## Step 3: Install Kong Gateway
 
-sudo apt install -y ./kong-enterprise-edition-3.8.0.0.deb
+1. **Download the Kong package:**
+   ```bash
+   curl -Lo kong-enterprise-edition-3.8.0.0.deb "https://packages.konghq.com/public/gateway-38/deb/ubuntu/pool/jammy/main/k/ko/kong-enterprise-edition_3.8.0.0/kong-enterprise-edition_3.8.0.0_$(dpkg --print-architecture).deb"
+   ```
 
-Optional: Fixing Permission Issues
+2. **Install Kong:**
+   ```bash
+   sudo apt install -y ./kong-enterprise-edition-3.8.0.0.deb
+   ```
 
-If you encounter permission issues while accessing the downloaded .deb file, you can follow these steps:
+3. **Optional: Fixing Permission Issues**
+   - **Download to /tmp:**
+     ```bash
+     curl -Lo /tmp/kong-enterprise-edition-3.8.0.0.deb "https://packages.konghq.com/public/gateway-38/deb/ubuntu/pool/jammy/main/k/ko/kong-enterprise-edition_3.8.0.0/kong-enterprise-edition_3.8.0.0_$(dpkg --print-architecture).deb"
+     ```
+   - **Install the Package:**
+     ```bash
+     sudo apt install -y /tmp/kong-enterprise-edition-3.8.0.0.deb
+     ```
+   - **Remove the Temporary File:**
+     ```bash
+     sudo rm /tmp/kong-enterprise-edition-3.8.0.0.deb
+     ```
 
-Download to /tmp:
+---
 
-curl -Lo /tmp/kong-enterprise-edition-3.8.0.0.deb "https://packages.konghq.com/public/gateway-38/deb/ubuntu/pool/jammy/main/k/ko/kong-enterprise-edition_3.8.0.0/kong-enterprise-edition_3.8.0.0_$(dpkg --print-architecture).deb"
+## Step 4: Configure PostgreSQL Authentication
 
-Install the Package:
+1. **Edit the `pg_hba.conf` file:**
+   ```bash
+   sudo nano /etc/postgresql/12/main/pg_hba.conf
+   ```
 
-sudo apt install -y /tmp/kong-enterprise-edition-3.8.0.0.deb
+   Update authentication to `md5`:
+   ```
+   local   all             all                                     md5
+   host    all             all             127.0.0.1/32            md5
+   host    all             all             ::1/128                 md5
+   host    all             all             0.0.0.0/0               md5
+   ```
 
-Remove the Temporary File:
+2. **Set PostgreSQL to listen on all IPs:**
+   - **Edit `postgresql.conf`:**
+     ```bash
+     sudo nano /etc/postgresql/12/main/postgresql.conf
+     ```
+   - **Modify the line:**
+     ```conf
+     listen_addresses = '*'
+     ```
 
-sudo rm /tmp/kong-enterprise-edition-3.8.0.0.deb
+3. **Restart PostgreSQL:**
+   ```bash
+   sudo systemctl restart postgresql
+   ```
 
-Step 4: Configure PostgreSQL Authentication
+---
 
-Edit the pg_hba.conf file:
+## Step 5: Configure Kong
 
-sudo nano /etc/postgresql/12/main/pg_hba.conf
+1. **Copy the default configuration file:**
+   ```bash
+   sudo cp /etc/kong/kong.conf.default /etc/kong/kong.conf
+   ```
 
-Update authentication to md5:
+2. **Edit the configuration file:**
+   ```bash
+   sudo nano /etc/kong/kong.conf
+   ```
 
-local   all             all                                     md5
-host    all             all             127.0.0.1/32            md5
-host    all             all             ::1/128                 md5
-host    all             all             0.0.0.0/0               md5
+   Modify the database settings:
+   ```conf
+   database = postgres
+   pg_host = 127.0.0.1
+   pg_port = 5432
+   pg_user = kong
+   pg_password = super_secret
+   pg_database = kong
+   ```
 
-Set PostgreSQL to listen on all IPs:
+---
 
-Open postgresql.conf:
-
-sudo nano /etc/postgresql/12/main/postgresql.conf
-
-Modify the line:
-
-listen_addresses = '*'
-
-Restart PostgreSQL:
-
-sudo systemctl restart postgresql
-
-Step 5: Configure Kong
-
-Copy the default configuration file:
-
-sudo cp /etc/kong/kong.conf.default /etc/kong/kong.conf
-
-Edit the configuration file:
-
-sudo nano /etc/kong/kong.conf
-
-Modify the database settings:
-
-database = postgres
-pg_host = 127.0.0.1
-pg_port = 5432
-pg_user = kong
-pg_password = super_secret
-pg_database = kong
-
-Step 6: Run Database Migrations
+## Step 6: Run Database Migrations
 
 Run migrations:
-
+```bash
 kong migrations bootstrap -c /etc/kong/kong.conf
+```
 
-Step 7: Start Kong Gateway
+---
 
-Start Kong:
+## Step 7: Start Kong Gateway
 
-kong start -c /etc/kong/kong.conf
+1. **Start Kong:**
+   ```bash
+   kong start -c /etc/kong/kong.conf
+   ```
 
-Check Kong status:
+2. **Check Kong status:**
+   ```bash
+   curl -i http://localhost:8001
+   ```
 
-curl -i http://localhost:8001
+---
 
-Kong Services Setup
+## Kong Services Setup
 
-1. Create Gateway Service
+### 1. Create Gateway Service
+1. Log into Kong Manager and select the default workspace.
+2. Navigate to **Services** and click **+ Add Service**.
+3. Fill in the fields:
+   - **Name:** Kafka-Health-Service
+   - **Tags:** example
+   - **Service Endpoint:** 
+     - Full URL: `http://api-dev.catalystai.work/health/kafka`
 
-Steps:
+4. Click **Create**.
 
-Log into Kong Manager and select the default workspace.
+### 2. Create Route
+1. Navigate to **Routes** and click **+ Add Route**.
+2. Fill in the details:
+   - **Name:** Kafka-Health-Route
+   - **Paths:** `/health/kafka`
+   - **Service:** Kafka-Health-Service
 
-Navigate to Services.
+3. Click **Create**.
 
-Click on + Add Service.
+### 3. Set Up Rate Limiting
+1. Go to the **Plugins** tab of the route.
+2. Install **Rate Limiting Plugin** with a limit of 10 requests per minute.
 
-Fill in the fields:
+### 4. Set Up API Key Authentication
+1. Install the **Key Authentication Plugin** on the route.
+2. Use default settings and click **Create**.
 
-Name: Kafka-Health-Service (or any relevant name)
+### 5. Create Consumer and Set Up Credentials
+1. Create a consumer:
+   - **Username:** kafka-consumer
+   - **Custom ID:** kafka-consumer-id
+2. Add an API key (`my-api-key`) to the consumer.
 
-Tags: example (or any relevant tags)
+### 6. Logging: File Log Plugin
+1. Enable the **File Log Plugin** for the route.
+2. Configure:
+   - **File Path:** `/var/log/kong/kong.log`
 
-Service Endpoint:
+### 7. API Versioning
+1. Create versioned routes:
+   - `/v1/health/kafka`
+   - `/v2/health/kafka`
 
-Choose one of the following options:
+---
 
-Full URL:
+## Testing
 
-Enter the complete URL (e.g., http://api-dev.catalystai.work/health/kafka).
-
-Protocol, Host, Port, and Path:
-
-Protocol: http
-
-Host: api-dev.catalystai.work
-
-Path: /health/kafka
-
-Port: 80
-
-Click Create.
-
-2. Create Route
-
-Steps:
-
-In Kong Manager, navigate to Routes.
-
-Click on + Add Route.
-
-Fill in the details:
-
-Name: Kafka-Health-Route
-
-Service: Select Kafka-Health-Service.
-
-Paths: /health/kafka
-
-Click Create.
-
-3. Set Up Rate Limiting
-
-Steps:
-
-Navigate to the Plugins tab for the Kafka-Health-Route.
-
-Click on Install Plugin.
-
-Search for Rate Limiting and click Enable.
-
-Configure:
-
-Limit: 10 requests per minute.
-
-Click Create.
-
-4. Set Up API Key Authentication
-
-Steps:
-
-Navigate to the Plugins tab for the Kafka-Health-Route.
-
-Click on Install Plugin.
-
-Search for Key Authentication and click Enable.
-
-Use the default settings.
-
-Click Create.
-
-5. Create Consumer and Set Up Credentials
-
-Steps:
-
-Navigate to Consumers.
-
-Click on New Consumer.
-
-Fill in:
-
-Username: kafka-consumer
-
-Custom ID: kafka-consumer-id
-
-Click Create.
-
-Open the consumer’s page, go to Credentials tab.
-
-Click New Key Auth Credential.
-
-Set Key to my-api-key.
-
-Click Create.
-
-6. Testing
-
-To Test Route with API Key:
-
-Browser:
-
-http://<KONG_IP>:8000/health/kafka?apikey=my-api-key
-
-curl:
-
+**With API Key:**
+```bash
 curl -i -X GET http://<KONG_IP>:8000/health/kafka --header "apikey: my-api-key"
+```
 
-7. Logging: File Log Plugin
+---
 
-1. Enable the Plugin
+## Logs
 
-Scope: Choose to enable the plugin globally or on a specific service/route.
-
-Navigate to: Plugins tab of the chosen Service or Route.
-
-2. Install the File Log Plugin
-
-Click on Install Plugin.
-
-Select File Log from the list.
-
-3. Configure Plugin Settings
-
-File Path: Specify where logs will be stored.
-
-/var/log/kong/kong.log
-
-Log Level: Set the desired log level (e.g., info, debug, error).
-
-Log Format (optional): Define the format of the logs (e.g., json).
-
-Viewing Logs
-
-SSH into the Kong server and use:
-
+View logs:
+```bash
 tail -f /var/log/kong/kong.log
+```
 
-8. API Versioning
+---
 
-Overview
+## License
 
-To implement API versioning for a single service (e.g., Kafka) in Kong, you need to create separate routes for each version. This documentation provides the configuration details for setting up versioned routes.
+This documentation is provided under the MIT License.
 
-Configuration Steps
+--- 
 
-Create Routes for Each API Version
-
-Route for v1
-
-Name: Kafka-Health-Route-v1
-
-Path: /v1/health/kafka
-
-Service: Kafka (existing service)
-
-Route for v2
-
-Name: Kafka-Health-Route-v2
-
-Path: /v2/health/kafka
-
-Service: Kafka (existing service)
-
-Testing the Versioned API
-
-Access v1:
-
-GET https://api.example.com/v1/health/kafka
-
-Access v2:
-
-GET https://api.example.com/v2/health/kafka
-
-This documentation provides a comprehensive guide to configuring Kong Gateway, setting up services and routes, implementing API versioning, and testing the setup. 
+You can copy and paste this into a `README.md` file for your GitHub repository!
