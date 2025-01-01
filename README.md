@@ -1,6 +1,4 @@
-Here’s a detailed README file for your GitHub repository:
 
----
 ![image](https://github.com/user-attachments/assets/e9a6fc90-c2b2-4bcd-9767-c757c893a4a9)
 
 # Kong Gateway Installation, Configuration, and Setup
@@ -255,7 +253,3 @@ tail -f /var/log/kong/kong.log
 ## License
 
 This documentation is provided under the MIT License.
-
---- 
-
-You can copy and paste this into a `README.md` file for your GitHub repository!
